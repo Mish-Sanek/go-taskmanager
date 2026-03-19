@@ -1,5 +1,8 @@
 // go run cmd/api/main.go
 
+// postgres://app:secret@localhost:5432/tasks?sslmode=disable
+//
+
 package main
 
 import (
@@ -12,6 +15,7 @@ import (
 	"practice/internal/config"
 	"practice/internal/handlers"
 	"practice/internal/logger"
+	"practice/internal/storage"
 	"time"
 )
 
@@ -19,12 +23,25 @@ func main() {
 	cfg := config.Load()
 	logger.Init(cfg.Env)
 	mux := http.NewServeMux()
+	var store storage.TaskStorage
 
-	mux.HandleFunc("GET /tasks", handlers.GetAllTasksHandler)
-	mux.HandleFunc("POST /tasks", handlers.CreateTaskHandler)
-	mux.HandleFunc("GET /tasks/{id}", handlers.GetTaskByIDHandler)
-	mux.HandleFunc("DELETE /tasks/{id}", handlers.DeleteTaskHandler)
-	mux.HandleFunc("PUT /tasks/{id}", handlers.UpdateTaskHandler)
+	if cfg.Env == "production" {
+		postgresStore, err := storage.NewPostgresStore(cfg.DatabaseURL)
+		if err != nil {
+			slog.Error("failed to create postgres store", "error", err)
+		}
+		store = postgresStore
+	} else {
+		store = storage.NewMemoryStore()
+	}
+
+	taskHandler := handlers.NewTaskHandler(store)
+
+	mux.HandleFunc("GET /tasks", taskHandler.GetAllTasks)
+	mux.HandleFunc("POST /tasks", taskHandler.CreateTask)
+	mux.HandleFunc("GET /tasks/{id}", taskHandler.GetTaskByID)
+	mux.HandleFunc("DELETE /tasks/{id}", taskHandler.DeleteTask)
+	mux.HandleFunc("PUT /tasks/{id}", taskHandler.UpdateTask)
 
 	server := &http.Server{
 		Addr:         cfg.Port,
