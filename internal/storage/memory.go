@@ -5,29 +5,36 @@ import (
 	"practice/internal/models"
 )
 
-var (
-	tasks      = make(map[int]models.Task)
-	nextID int = 1
-)
+type MemoryStore struct {
+	tasks  map[int]models.Task
+	nextID int
+}
 
-func GetAllTasks() []models.Task {
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{
+		tasks:  make(map[int]models.Task),
+		nextID: 1,
+	}
+}
+
+func (m *MemoryStore) GetAllTasks() ([]models.Task, error) {
 	result := []models.Task{}
-	for _, task := range tasks {
+	for _, task := range m.tasks {
 		result = append(result, task)
 	}
-	return result
+	return result, nil
 }
 
-func CreateTask(title string) models.Task {
-	task := models.Task{ID: nextID, Title: title, Completed: false}
-	tasks[nextID] = task
-	nextID++
+func (m *MemoryStore) CreateTask(title string) (models.Task, error) {
+	task := models.Task{ID: m.nextID, Title: title, Completed: false}
+	m.tasks[m.nextID] = task
+	m.nextID++
 
-	return task
+	return task, nil
 }
 
-func GetTaskByID(id int) (models.Task, error) {
-	task, exist := tasks[id]
+func (m *MemoryStore) GetTaskByID(id int) (models.Task, error) {
+	task, exist := m.tasks[id]
 
 	if !exist {
 		return models.Task{}, errors.New("task not found")
@@ -36,27 +43,27 @@ func GetTaskByID(id int) (models.Task, error) {
 	return task, nil
 }
 
-func DeleteTask(id int) error {
-	_, exist := tasks[id]
+func (m *MemoryStore) DeleteTask(id int) error {
+	_, exist := m.tasks[id]
 	if !exist {
 		return errors.New("task not found")
 	}
 
-	delete(tasks, id)
+	delete(m.tasks, id)
 	return nil
 }
 
-func UpdateTask(id int, title string, completed bool) (models.Task, error) {
-	_, exist := tasks[id]
+func (m *MemoryStore) UpdateTask(id int, title string, completed bool) (models.Task, error) {
+	_, exist := m.tasks[id]
 	if !exist {
 		return models.Task{}, errors.New("task not found")
 	}
 
-	tasks[id] = models.Task{
+	m.tasks[id] = models.Task{
 		ID:        id,
 		Title:     title,
 		Completed: completed,
 	}
 
-	return tasks[id], nil
+	return m.tasks[id], nil
 }

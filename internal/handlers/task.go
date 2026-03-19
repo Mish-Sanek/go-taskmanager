@@ -16,7 +16,15 @@ type updateTaskRequest struct {
 	Completed *bool   `json:"completed"`
 }
 
-func CreateTaskHandler(w http.ResponseWriter, r *http.Request) {
+type TaskHandler struct {
+	store storage.TaskStorage
+}
+
+func NewTaskHandler(store storage.TaskStorage) *TaskHandler {
+	return &TaskHandler{store: store}
+}
+
+func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req createTaskRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -30,23 +38,31 @@ func CreateTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := storage.CreateTask(req.Title)
+	task, err := h.store.CreateTask(req.Title)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to create task")
+		return
+	}
 	respondJSON(w, http.StatusOK, task)
 }
 
-func GetAllTasksHandler(w http.ResponseWriter, r *http.Request) {
-	tasks := storage.GetAllTasks()
+func (h *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
+	tasks, err := h.store.GetAllTasks()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "failed to get tasks")
+		return
+	}
 	respondJSON(w, http.StatusOK, tasks)
 }
 
-func GetTaskByIDHandler(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	task, err := storage.GetTaskByID(id)
+	task, err := h.store.GetTaskByID(id)
 
 	if err != nil {
 		respondError(w, http.StatusNotFound, "task not found")
@@ -56,14 +72,14 @@ func GetTaskByIDHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, task)
 }
 
-func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	err = storage.DeleteTask(id)
+	err = h.store.DeleteTask(id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "task not found")
 		return
@@ -72,7 +88,7 @@ func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid id")
@@ -86,7 +102,7 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oldTask, err := storage.GetTaskByID(id)
+	oldTask, err := h.store.GetTaskByID(id)
 	if err != nil {
 		respondError(w, http.StatusNotFound, "task not found")
 		return
@@ -102,7 +118,7 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 		completed = *data.Completed
 	}
 
-	updatedTask, err := storage.UpdateTask(id, title, completed)
+	updatedTask, err := h.store.UpdateTask(id, title, completed)
 	if err != nil {
 		respondError(w, http.StatusNotFound, err.Error())
 		return
