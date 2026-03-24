@@ -5,15 +5,25 @@ import (
 	"log"
 	"net/http"
 	"practice/internal/storage"
+	"time"
 )
 
 type createTaskRequest struct {
-	Title string `json:"title"`
+	Title      string     `json:"title"`
+	DueDate    *time.Time `json:"due_date,omitempty"`
+	IsFavorite bool       `json:"is_favorite"`
+	Color      *string    `json:"color"`
+	RepeatDays []int      `json:"repeat_days"`
 }
 
 type updateTaskRequest struct {
-	Title     *string `json:"title"`
-	Completed *bool   `json:"completed"`
+	Title      *string    `json:"title"`
+	Completed  *bool      `json:"completed"`
+	DueDate    *time.Time `json:"due_date"`
+	IsFavorite *bool      `json:"is_favorite"`
+	Color      *string    `json:"color"`
+	IsArchived *bool      `json:"is_archived"`
+	RepeatDays *[]int     `json:"repeat_days"`
 }
 
 type TaskHandler struct {
@@ -38,7 +48,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.store.CreateTask(req.Title)
+	task, err := h.store.CreateTask(req.Title, req.DueDate, req.IsFavorite, req.Color, req.RepeatDays)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to create task")
 		return
@@ -118,7 +128,32 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		completed = *data.Completed
 	}
 
-	updatedTask, err := h.store.UpdateTask(id, title, completed)
+	dueDate := oldTask.DueDate
+	if data.DueDate != nil {
+		dueDate = data.DueDate
+	}
+
+	isFavorite := oldTask.IsFavorite
+	if data.IsFavorite != nil {
+		isFavorite = *data.IsFavorite
+	}
+
+	color := oldTask.Color
+	if data.Color != nil {
+		color = data.Color
+	}
+
+	isArchived := oldTask.IsArchived
+	if data.IsArchived != nil {
+		isArchived = *data.IsArchived
+	}
+
+	repeatDays := oldTask.RepeatDays
+	if data.RepeatDays != nil {
+		repeatDays = *data.RepeatDays
+	}
+
+	updatedTask, err := h.store.UpdateTask(id, title, completed, dueDate, isFavorite, color, isArchived, repeatDays)
 	if err != nil {
 		respondError(w, http.StatusNotFound, err.Error())
 		return

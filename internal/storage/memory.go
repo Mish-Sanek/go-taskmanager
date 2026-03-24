@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"practice/internal/models"
+	"time"
 )
 
 type MemoryStore struct {
@@ -25,8 +26,17 @@ func (m *MemoryStore) GetAllTasks() ([]models.Task, error) {
 	return result, nil
 }
 
-func (m *MemoryStore) CreateTask(title string) (models.Task, error) {
-	task := models.Task{ID: m.nextID, Title: title, Completed: false}
+func (m *MemoryStore) CreateTask(title string, dueDate *time.Time, isFavorite bool, color *string, repeatDays []int) (models.Task, error) {
+	task := models.Task{
+		ID:         m.nextID,
+		Title:      title,
+		Completed:  false,
+		DueDate:    dueDate,
+		IsFavorite: isFavorite,
+		Color:      color,
+		IsArchived: false,
+		RepeatDays: repeatDays,
+	}
 	m.tasks[m.nextID] = task
 	m.nextID++
 
@@ -53,16 +63,21 @@ func (m *MemoryStore) DeleteTask(id int) error {
 	return nil
 }
 
-func (m *MemoryStore) UpdateTask(id int, title string, completed bool) (models.Task, error) {
+func (m *MemoryStore) UpdateTask(id int, title string, completed bool, dueDate *time.Time, isFavorite bool, color *string, isArchived bool, repeatDays []int) (models.Task, error) {
 	_, exist := m.tasks[id]
 	if !exist {
 		return models.Task{}, errors.New("task not found")
 	}
 
 	m.tasks[id] = models.Task{
-		ID:        id,
-		Title:     title,
-		Completed: completed,
+		ID:         id,
+		Title:      title,
+		Completed:  completed,
+		DueDate:    dueDate,
+		IsFavorite: isFavorite,
+		Color:      color,
+		IsArchived: isArchived,
+		RepeatDays: repeatDays,
 	}
 
 	return m.tasks[id], nil
